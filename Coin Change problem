@@ -1,0 +1,119 @@
+#include <iostream>
+#include <string>
+#include <fstream>
+#include <vector>
+#include <cmath>
+#include <algorithm>
+using namespace std;
+
+// Check if the greedy algorithm can be applied
+bool isGreedyApplicable(const vector<int>& denominations) {
+    for (size_t i = 1; i < denominations.size(); i++) {
+        if (denominations[i - 1] % denominations[i] != 0)
+            return false;
+    }
+    return true;
+}
+
+// Print the denominations used
+void displayDenominations(const vector<int>& coinsUsed, const vector<string>& denominationNames) {
+    cout << "Denominations used are:" << endl;
+    for (size_t i = 0; i < coinsUsed.size(); i++) {
+        if (coinsUsed[i] > 0) {
+            cout << coinsUsed[i] << " " << denominationNames[i];
+            if (coinsUsed[i] > 1)
+                cout << "s";
+            cout << endl;
+        }
+    }
+}
+
+// Greedy approach for coin change
+int coinChangeGreedy(const vector<int>& denominations, const vector<string>& denominationNames, int targetAmount) {
+    if (!isGreedyApplicable(denominations))
+        return -1;
+
+    vector<int> coinsUsed(denominations.size(), 0);
+    int totalCoins = 0;
+
+    for (size_t i = 0; i < denominations.size(); i++) {
+        coinsUsed[i] = targetAmount / denominations[i];
+        targetAmount -= coinsUsed[i] * denominations[i];
+        totalCoins += coinsUsed[i];
+    }
+
+    if (targetAmount != 0)  // Check if the target amount is completely covered
+        return -1;
+
+    displayDenominations(coinsUsed, denominationNames);
+    return totalCoins;
+}
+
+// Dynamic Programming approach for coin change
+int coinChangeDP(const vector<int>& denominations, const vector<string>& denominationNames, int targetAmount) {
+    vector<int> dp(targetAmount + 1, INT_MAX);
+    dp[0] = 0;
+
+    for (int i = 1; i <= targetAmount; i++) {
+        for (int den : denominations) {
+            if (i >= den && dp[i - den] != INT_MAX) {
+                dp[i] = min(dp[i], 1 + dp[i - den]);
+            }
+        }
+    }
+
+    if (dp[targetAmount] == INT_MAX)
+        return -1;
+
+    vector<int> coinsUsed(denominations.size(), 0);
+    int amountRemaining = targetAmount;
+    while (amountRemaining > 0) {
+        for (size_t i = 0; i < denominations.size(); i++) {
+            if (amountRemaining >= denominations[i] && dp[amountRemaining] == 1 + dp[amountRemaining - denominations[i]]) {
+                coinsUsed[i]++;
+                amountRemaining -= denominations[i];
+                break;
+            }
+        }
+    }
+
+    displayDenominations(coinsUsed, denominationNames);
+    return dp[targetAmount];
+}
+
+int main() {
+    ifstream file("Coins.txt");
+    if (file) {
+        string currency, currencySymbol, denominationName;
+        int denominationCount, denominationValue, amountNeeded;
+        file >> currency >> currencySymbol >> denominationCount;
+
+        vector<int> denominations;
+        vector<string> denominationNames;
+
+        for (int i = 0; i < denominationCount; i++) {
+            file >> denominationName >> denominationValue;
+            denominations.push_back(denominationValue);
+            denominationNames.push_back(denominationName);
+        }
+
+        cout << "Enter the value for which coin-change is required (in cents): ";
+        cin >> amountNeeded;
+
+        int solution = coinChangeGreedy(denominations, denominationNames, amountNeeded);
+        if (solution != -1)
+            cout << "Total denominations used (Greedy): " << solution << endl;
+        else {
+            cout << "Greedy algorithm failed. Trying dynamic programming:" << endl;
+            solution = coinChangeDP(denominations, denominationNames, amountNeeded);
+            if (solution == -1)
+                cout << "Sum can't be constructed for this problem" << endl;
+            else
+                cout << "Total denominations used (DP): " << solution << endl;
+        }
+    }
+    else {
+        cout << "Error opening file." << endl;
+    }
+    return 0;
+}
